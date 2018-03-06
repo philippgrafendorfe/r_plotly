@@ -16,3 +16,9 @@ Git erfordert etwas Zeit. Man kann aber in kurzer Zeit die wesentlichen Dinge ma
 Bei Fragen stehe ich (Philipp) natürlich gerne zur Verfügung.
 
 Sollte jemand ein Thema zu besprechen haben, dann bitte einfach ein issue öffnen. Das geht oben. Sollte jemand eine Person ansprechen dann geht das wie aus dem fb universum gewohnt über @name.
+
+Präsentation 28.5.2018:
+
+
+Präsentation 4.6.2018:
+Grafendorfer - Thema unbekannt
