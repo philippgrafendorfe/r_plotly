@@ -1,0 +1,42 @@
+---
+title: "Intermediate Plotly"
+output: html_notebook
+---
+
+```{r}
+library(dplyr)
+library(plotly)
+```
+
+```{r}
+A<-read.table("http://www.trutschnig.net/Datensatz.txt",header =TRUE)
+summary(A)
+```
+
+
+```{r}
+address <- url("http://www.trutschnig.net/RTR2015.RData")
+load(address)
+df <- RTR2015
+rm(RTR2015)
+glimpse(df)
+```
+
+```{r}
+tx <- group_by(A, weekday)
+# initiate a plotly object with date on x and median on y
+p <- plot_ly(tx, x = ~ymd, y = ~sum_out)
+# plotly_data() returns data associated with a plotly object
+plotly_data(p)
+```
+
+```{r}
+add_lines(
+  # plots one line per city since p knows city is a grouping variable
+  add_lines(p, alpha = 0.2, name = "All days", hoverinfo = "none"),
+  name = "Monday", data = filter(A, weekday == "Mon")
+)
+```
+
+Man könnte hier den monatlichen Median nehmen um das ganze zu glätten. Die Studenten können dann einen anderen Tag anschauen und analysieren. 
+
