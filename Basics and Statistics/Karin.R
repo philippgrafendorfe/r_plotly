@@ -1,0 +1,189 @@
+
+
+Useful Links 
+
+https://plot.ly/r/
+  
+https://plotly-book.cpsievert.me/
+  
+https://help.plot.ly/tutorials/
+  
+  
+Let´s get started:
+
+Installation: 
+install.packages("plotly")
+library(plotly)
+library(dplyr)
+
+
+
+#Readin Bankomatdatensatz
+bank <-read.table("http://www.trutschnig.net/Datensatz.txt",head=TRUE)
+summary(bank)
+
+#Readin RTR data (see https://www.netztest.at/de/Test for Background)
+address <- url("http://www.trutschnig.net/RTR2015.RData")
+load(address)
+head(RTR2015)
+
+                         BASISC
+
+The general structure of a plotly command looks like this:
+
+plot_ly(data, x = ~X, y = ~Y, ...)
+
+
+
+If you do not specify the type of plot you want, plotly will choose the one that suits the given data best.
+  
+Galaxy = filter(RTR2015, device == "Galaxy Note 10.1") 
+
+plot_ly(Galaxy, x = ~rtr_speed_ul, y = ~rtr_speed_dl, name = "default")
+
+BUT: 
+  
+plot_ly(Galaxy, x = ~op_name, y = ~rtr_speed_dl, name = "default")
+
+Scatter:
+
+The scatterplot is useful for visualizing the correlation between variables.
+
+plot_ly(Galaxy, x = ~ rtr_speed_ul, y = ~rtr_speed_dl)%>% 
+  add_markers(alpha = 0.9, name = "alpha")
+
+plot_ly(Galaxy, x = ~ rtr_speed_ul, y = ~rtr_speed_dl)%>% 
+  add_markers(symbol = I(2), name = "hollow")
+
+
+plot_ly(Galaxy, x = ~longitude, y = ~rtr_speed_dl, name = "default")
+subplot(
+  plot_ly(Galaxy, x = ~rtr_speed_ul, y = ~rtr_speed_dl, name = "default"),
+  plot_ly(Galaxy, x = ~rtr_speed_ul, y = ~rtr_speed_dl) %>% 
+    add_markers(alpha = 0.2, name = "alpha"),
+  plot_ly(Galaxy, x = ~rtr_speed_ul, y = ~rtr_speed_dl) %>% 
+    add_markers(symbol = I(1), name = "hollow")
+)
+
+plot_ly(Galaxy, x = ~longitude, y = ~rtr_speed_dl, name = "default")
+subplot(
+  plot_ly(Galaxy, x = ~rtr_speed_ul, y = ~rtr_speed_dl, name = "default"),
+  plot_ly(Galaxy, x = ~rtr_speed_ul, y = ~rtr_speed_dl) %>% 
+    add_markers(alpha = 0.5, name = "alpha"),
+  plot_ly(Galaxy, x = ~rtr_speed_ul, y = ~rtr_speed_dl) %>% 
+    add_markers(symbol = I(3), name = "hollow")
+)
+
+We can map additional information by using colors:
+
+plot_ly(data = Galaxy, x = ~rtr_speed_ul, y = ~rtr_speed_dl, color = ~op_name)
+
+plot_ly(data = Galaxy, x = ~rtr_speed_ul, y = ~rtr_speed_dl, color = ~op_name, colors = c("red","green","blue"))
+
+Another option is add_lines
+
+plot_ly(Galaxy, x = ~longitude, y = ~rtr_speed_dl) %>%
+  add_lines(color = ~op_name)
+
+Exercise:
+Choose some other devices and visualize the correlation between download-Speed and Ping. 
+
+
+Histograms and Bars
+
+A histogram is an accurate representation of the distribution of numerical data. It differs from a bar graph, in the sense that a bar graph relates two variables, but a histogram relates only one. 
+
+plot_ly(RTR2015, x = ~rtr_speed_dl, color = ~device_platform) %>% add_histogram(name = "plotly.js")
+
+R has diverse facilities for estimating the optimal number of bins in a histogram that we can easily leverage.
+
+p1 <- plot_ly(RTR2015, x = ~rtr_speed_dl) %>% add_histogram(name = "plotly.js")
+speed_hist <- function(method = "FD") {
+  h <- hist(RTR2015$rtr_speed_dl, breaks = method, plot = FALSE)
+  plot_ly(x = h$mids, y = h$counts) %>% add_bars(name = method)
+}
+
+subplot(
+  p1, speed_hist(), speed_hist("Sturges"),  speed_hist("Scott"),
+  nrows = 4, shareX = TRUE
+)
+
+
+
+Other Examples
+
+plot_ly(RTR2015, x = ~op_name) %>% add_histogram()
+
+plot_ly(RTR2015, x = ~op_name, color = ~device_platform) %>% add_histogram()
+
+plot_ly(RTR2015, x = ~op_name, y =~rtr_speed_dl, color = ~device_platform) %>% add_bars()
+
+
+plot_ly(RTR2015, x = ~device_has_lte, y= ~device, color = ~op_name) %>%
+  add_bars() %>%
+  layout(barmode = "stack")
+
+Exercise:
+
+Starting from those data where op_name = "Apple"
+
+-create a histogram showing the distribution of rtr_ping
+-create a barplot of nw_cat and rtr_Speed_dl 
+-create stacked bars which in addition also contain the device platform
+
+                     STATISTIC 
+
+Boxplots
+
+A boxplot is a way to show the spread and centers of a data set. Measures of spread include the interquartile range and the mean of the data set. Measures of center include the mean or average and median (the middle of a data set).
+
+plot_ly(Galaxy, y = ~rtr_speed_ul, type = "box", name ="Upload") %>%
+  add_trace(y = ~rtr_speed_dl, name = "Download")
+
+plot_ly(Galaxy, x = ~rtr_speed_ul, type = "box", name ="Upload") %>%
+  add_trace(x = ~rtr_speed_dl, name = "Download")
+
+
+p <- plot_ly(Galaxy, y = ~rtr_speed_dl, color = I("blue"), 
+             alpha = 0.1, boxpoints = "suspectedoutliers")
+p1 <- p %>% add_boxplot(x = "Overall")
+p2 <- p %>% add_boxplot(x = ~op_name)
+subplot(
+  p1, p2, shareY = TRUE,
+  widths = c(0.2, 0.8), margin = 0
+) %>% hide_legend()
+
+p = filter(RTR2015, device_platform == "Android" | device_platform == "iOS")
+
+plot_ly(p, x = ~rtr_speed_dl, y = ~interaction(op_name, device_platform)) %>%
+  add_boxplot(color = ~op_name) %>%
+  layout(yaxis = list(title = ""), margin = list(l = 100))
+
+Exercise: 
+Use Boxplots to compare the Upload-Speed of devices that have LTE and the ones that don´t 
+
+Heatmaps
+
+plot_ly(RTR2015, x = ~op_name, y = ~nw_cat, z = ~rtr_speed_dl, type = "heatmap")
+
+plot_ly(RTR2015, x = ~mymd, y = ~device_platform, z = ~rtr_speed_dl, type = "heatmap")
+plot_ly(RTR2015, x = ~mymd, y = ~op_name, z = ~rtr_speed_dl, type = "heatmap")
+
+plot_ly(RTR2015, x = ~mymd, y = ~op_name, z = ~rtr_speed_dl, type = "heatmap", colorscale="Greys")
+
+plot_ly(RTR2015, x = ~mymd, y = ~op_name, z = ~rtr_speed_dl,colors = colorRamp(c("red", "green")), type = "heatmap")
+plot_ly(RTR2015, x = ~op_name, y = ~nw_cat, z = ~rtr_speed_dl, colors = colorRamp(c("red", "yellow")), type = "heatmap")
+
+Exercise: 
+  Create a heatmap visualising the connection of nw_cat, mymd and rtr_speed_ul
+
+2DHistograms 
+
+2D histograms require x/y, but in contrast to heatmaps, z is optional
+
+plot_ly(RTR2015, x = ~op_name, y = ~nw_cat) %>%
+ add_histogram2d()
+
+plot_ly(RTR2015, x = ~op_name, y = ~rtr_speed_dl) %>%
+  add_histogram2d()
+
