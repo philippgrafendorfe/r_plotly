@@ -1,6 +1,6 @@
 ## ----message=FALSE, warning=FALSE----------------------------------------
 library(dplyr)
-library(plotly)
+suppressPackageStartupMessages({library(plotly)})
 library(zoo)
 library(htmlwidgets)
 library(knitr)
@@ -24,7 +24,8 @@ add_lines(
   )
 
 ## ------------------------------------------------------------------------
-raw_bank[!complete.cases(raw_bank$sum_out),]
+na_index <- !complete.cases(raw_bank$sum_out)
+raw_bank[na_index,]
 
 ## ------------------------------------------------------------------------
 A <- raw_bank %>% 
@@ -46,11 +47,14 @@ for (day in unique(A$weekday)) {
 }
 
 ## ------------------------------------------------------------------------
-B <- A %>% dplyr::group_by(year_month, weekday) %>% summarise(average_sum_out = mean(sum_out), sd = sd(sum_out))
+A[na_index,]
+
+## ------------------------------------------------------------------------
+B <- A %>% group_by(year_month, weekday) %>% summarise(average_sum_out = mean(sum_out), sd = sd(sum_out))
 B
 
 ## ------------------------------------------------------------------------
-B1 <- group_by(B, weekday)
+B1 <- B %>% group_by(weekday)
 p1 <- plot_ly(B1, x = ~year_month, y = ~average_sum_out)
 add_lines(
   add_lines(p1
@@ -67,6 +71,7 @@ axis_style <- list(
   autotick = FALSE
   ,dtick = 3
   ,title = FALSE
+  ,tickangle = 45
   ,tickcolor = toRGB("blue")
 )
 
@@ -113,17 +118,17 @@ layer_day <- function(plot, day) {
 }
 
 # unfortunately this does not work properly. I have not been able to spot the bug yet.
-layer_iqr <- function(plot) {
-  plot %>%
-    group_by(year_month) %>% 
-    summarise(
-      q1 = quantile(average_sum_out, 0.25),
-      med = median(average_sum_out),
-      q3 = quantile(average_sum_out, 0.75)
-      ) %>%
-    add_lines(y = ~med, name = "median", color = I("black")) %>%
-    add_ribbons(ymin = ~q1, ymax = ~q3, name = "IQR", color = I("black"))
-}
+# layer_iqr <- function(plot) {
+#   plot %>%
+#     group_by(year_month) %>% 
+#     summarise(
+#       q1 = quantile(average_sum_out, 0.25),
+#       med = median(average_sum_out),
+#       q3 = quantile(average_sum_out, 0.75)
+#       ) %>%
+#     add_lines(y = ~med, name = "median", color = I("black")) %>%
+#     add_ribbons(ymin = ~q1, ymax = ~q3, name = "IQR", color = I("black"))
+# }
 
 layer_layout <- function(plot) {
   plot %>% 
@@ -133,22 +138,71 @@ layer_layout <- function(plot) {
     )
   }
 
-## ----fig.width=9---------------------------------------------------------
+## ------------------------------------------------------------------------
 allWeekdays %>%
   add_fun(layer_day, "Mon") %>%
   add_fun(layer_day, "Fri") %>% 
-  add_fun(layer_day, "Sun") %>% 
+  add_fun(layer_day, "Sun") %>%
   add_fun(layer_layout)
 
-## ----fig.width=9---------------------------------------------------------
-allWeekdays %>% 
+## ------------------------------------------------------------------------
+p <- allWeekdays %>% 
   group_by(year_month) %>% 
   summarise(q1=quantile(average_sum_out, 0.25), m=median(average_sum_out), q3=quantile(average_sum_out, 0.75)) %>% 
   add_lines(y = ~q1, name = "Q1", color = I("black")) %>% 
   add_lines(y = ~m, name = "median", color = I("black")) %>% 
   add_lines(y = ~q3, name = "Q3", color = I("black")) %>% 
-  add_fun(layer_layout) 
+  add_fun(layer_layout)
+p
 
 ## ------------------------------------------------------------------------
-htmlwidgets::saveWidget(p, file = "time_series_median_cashout.html")
+# htmlwidgets::saveWidget(p, file = "time_series_median_cashout.html")
+# purl('plotly_time_series.Rmd')
+# rmarkdown::render(input = "plotly_time_series.Rmd", output_format = "html_document", output_file = "test.html")
+
+## ------------------------------------------------------------------------
+new <- A %>% mutate(year = as.factor(substring(ymd, 1, 4))) %>% select(-year_month)
+new$holiday <- as.factor(new$holiday)
+new
+
+## ------------------------------------------------------------------------
+new1 <- new %>% 
+  group_by(year, holiday) %>% 
+  summarise(average_sum_out = mean(sum_out), sd = sd(sum_out))
+new1
+
+## ------------------------------------------------------------------------
+layer_day <- function(plot, day) {
+  plot %>% filter(weekday == day) %>% add_lines(name = day)
+}
+
+## ------------------------------------------------------------------------
+layer_holiday <- function(plot, day) {
+    plot %>% filter(holiday == day) %>% add_lines(name = day, error_y = list(value = ~sd))
+    }
+
+## ------------------------------------------------------------------------
+allWeekdays <- B %>%
+  group_by(weekday) %>% 
+  plot_ly(x = ~year_month, y = ~average_sum_out) %>% 
+  add_lines(alpha=0.2
+            ,name="all Days"
+            ,hoverinfo="none"
+            ) 
+
+## ------------------------------------------------------------------------
+allHoliday <- new1 %>%
+  group_by(holiday) %>% 
+  plot_ly(x = ~year, y = ~average_sum_out) %>% 
+  add_lines(alpha=0.2
+            ,name="all holidays"
+            ,hoverinfo="none"
+            )
+
+## ------------------------------------------------------------------------
+allHoliday %>% 
+  add_fun(layer_holiday , 0) %>% 
+  add_fun(layer_holiday , 0.5) %>% 
+  add_fun(layer_holiday , 1) %>% 
+  add_fun(layer_holiday , 1.5)
 
