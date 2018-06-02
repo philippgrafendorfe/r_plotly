@@ -3,7 +3,7 @@ title: "Mean Shift Clustering"
 output: html_notebook
 ---
 
-![Alt Text](https://cdn-images-1.medium.com/max/800/1*vyz94J_76dsVToaa4VG1Zg.gif)
+![George Seif](https://cdn-images-1.medium.com/max/800/1*vyz94J_76dsVToaa4VG1Zg.gif)
 
 ```{r}
 library(ggplot2)
