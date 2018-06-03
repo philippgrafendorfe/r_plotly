@@ -24,7 +24,7 @@ library(plotly)
 ```
 
 
---- Load and rename columns for convenience in further ploting for the ATM data set. 
+Load and rename columns for convenience in further ploting for the ATM data set. 
 
 
 ```{r }
@@ -34,7 +34,7 @@ names(ATM)[names(ATM)=="ymd"] = "date"
 names(ATM)[names(ATM)=="sum_out"] = "cash"
 ```
 
---- Load and sample from the RTR Data due to computational restrictions.
+Load and sample from the RTR Data due to computational restrictions.
 
 ```{r}
 address = url("http://www.trutschnig.net/RTR2015.RData")
