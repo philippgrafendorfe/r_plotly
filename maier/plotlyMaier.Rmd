@@ -1,0 +1,291 @@
+---
+title: "BLANK"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.keep = 9.5)
+```
+
+First of all load all packages needed for further computations.
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(RColorBrewer)
+library(xtable)
+library(doBy)
+library(scales)
+library(gridExtra)
+library(plotly)
+
+```
+
+
+1 Rename columns for convenience in further ploting for the ATM data set. 
+
+```{r }
+ATM=read.table("http://www.trutschnig.net/Datensatz.txt",head=TRUE)
+ATM$ymd=as.Date(ATM$ymd)
+names(ATM)[names(ATM)=="ymd"] = "date"
+names(ATM)[names(ATM)=="sum_out"] = "cash"
+```
+
+1.a. Load and sample from the RTR Data due to computational restrictions.
+
+```{r}
+address = url("http://www.trutschnig.net/RTR2015.RData")
+load(address)
+RTR2015_sample = RTR2015[sample(nrow(RTR2015), 2500), ]
+# RTR2015_4G_sample = RTR2015[ which(RTR2015$nw_cat=='4G'), ]
+
+```
+
+
+### ATM dataset
+
+2 A simple ggplot example with the ATM data and alpha of 0.3.
+
+```{r }
+p = ggplot(ATM, aes(date, cash)) +
+  geom_line(aes(group = weekday),alpha = 0.3)
+p
+```
+
+3. Now plotly comes into play with its functions subplot() that merges ggplot and plotly objects into one object and ggplotly().
+
+
+```{r}
+subplot(
+  p, ggplotly(p), 
+  ggplot(ATM, aes(date, cash)) + geom_bin2d(),
+  ggplot(ATM, aes(date, cash)) + geom_hex(),
+  nrows = 2, shareX = TRUE, shareY = TRUE,
+  titleY = T, titleX = T
+)
+```
+
+4EX: Modify the plot_ly function in that hovering over datapoints yields the info holiday.
+
+
+```{r}
+ATMgrouped = group_by(ATM, weekday)
+p = plot_ly(ATMgrouped, x = ~date, y = ~cash, mode = 'markers',
+            hoverinfo = 'text',
+            text = ~paste('</br> weekday: ', weekday,
+                          '</br> cash: ', cash,
+                          '</br> holiday: ', holiday))
+p
+
+```
+
+5 Plotly objects can be piped as any other data, let us pipe it to the add_lines() function.
+
+```{r}
+p %>% 
+  add_lines(name = ~"cash", alpha = 0.2)
+
+
+```
+
+6 Nested add_lines() functions.
+
+```{r}
+add_lines(
+  add_lines(p, alpha = 0.2, name = "cash withdrawals"),
+  name = "Friday", data = filter(ATM, weekday == "Fri")
+)
+```
+7 different line types in a subplot
+
+```{r}
+subplot(
+  add_lines(p, color = ~weekday),
+  add_lines(p, linetype = ~weekday),
+  shareX = TRUE, nrows = 2
+)
+```
+
+8EX: Simplify the preceding code for the plotly function subplot() by avoiding nested functions and please deactivate the hoverinformation, think about why the hoverinformation might be usefull in this case ?
+
+8 we build a plotly object with the line plot type and we group the data by weekdays and no infos for hovering.
+
+```{r}
+allWeekdays = ATM %>%
+  group_by(weekday) %>%
+  plot_ly(x = ~date, y = ~cash) %>%
+  add_lines(alpha = 0.2, name = "cash withdrawals", hoverinfo = "none")
+allWeekdays
+```
+
+
+9EX: Highlight the series of cash withdrawals for fridays within the last plot.
+
+9 rangeslider() and highlighting cash withdrawals for fridays
+
+```{r}
+allWeekdays %>%
+  filter(weekday == "Fri") %>%
+  add_lines(name = "Fri") %>% 
+  rangeslider()
+
+```
+
+EX10 Highlight mondays in the last plot
+
+```{r}
+allWeekdays %>%
+  add_fun(function(plot) {
+    plot %>% filter(weekday == "Fri") %>% add_lines(name = "Fri")
+  }) %>%
+  add_fun(function(plot) {
+    plot %>% filter(weekday == "Mon") %>% 
+      add_lines(name = "Mon")
+  }) %>%
+  rangeslider()
+```
+
+EX11 Use the rangeslider() function but not by piping the plotly object to it.
+
+```{r}
+rangeslider(allWeekdays)
+
+```
+
+### RTR dataset
+
+12 regression methods applied to download speed and upload speed over all providers using ggplot() and ggplotly().
+
+```{r}
+p = ggplot(RTR2015_sample, aes(x = rtr_speed_ul, y = rtr_speed_dl)) +
+  geom_point(alpha = 0.05, color = "magenta") + 
+  geom_smooth(color = "blue") +
+  geom_smooth(method = "lm", se = F, color = "black")
+
+ggplotly(p, hoverinfo = "none")
+
+```
+
+
+13 plotly_data() returns data associated with a plotly visualization for looking up what's in a plotly object parcticularly after a while of data manipulations.
+
+```{r}
+p %>%
+  ggplotly(layerData = 2, originalData = FALSE, hoverinfo = "none") %>%
+  plotly_data()
+```
+
+
+14 Adding annotations to points of interest in the plot with add_segments().
+
+```{r}
+p %>%
+  ggplotly(layerData = 2, originalData = F) %>%
+  add_fun(function(p) {
+    p %>% slice(which.max(se)) %>%
+      add_segments(x = ~x, xend = ~x, y = ~ymin, yend = ~ymax) %>%
+      add_annotations("Maximum uncertainty", ax = 60)
+  }) %>%
+  add_fun(function(p) {
+    p %>% slice(which.min(se)) %>%
+      add_segments(x = ~x, xend = ~x, y = ~ymin, yend = ~ymax) %>%
+      add_annotations("Minimum uncertainty")
+  })
+```
+
+15 Using subplot() look at scatte with different colour transparencies with the alpha() function.
+
+```{r}
+subplot(
+  plot_ly(RTR2015_sample, x = ~rtr_speed_dl, y = ~rtr_speed_ul, name = "default"),
+  plot_ly(RTR2015_sample, x = ~rtr_speed_dl, y = ~rtr_speed_ul) %>% 
+    add_markers(alpha = 0.2, name = "alpha = 0.2"),
+  plot_ly(RTR2015_sample, x = ~rtr_speed_dl, y = ~rtr_speed_ul) %>% 
+    add_markers(alpha = 0.02, name = "alpha = 0.02")
+)
+```
+
+
+16 A simple 3D plot with plot_ly()
+
+
+```{r}
+plot_ly(RTR2015_sample, x = ~rtr_speed_dl, y = ~rtr_speed_ul, z = ~rtr_ping, name = "default")
+
+```
+
+17EX  Create a plotly object and differentiate the scatter via the operator name (op_name) in terms of different colors for the x/y/z-pairs. You might use the methods from before to further alleviate the overplotting issue within the add__* function from before.
+
+17 add_markers() function for differentiating the data points with categorical information.
+
+```{r}
+plot_ly(RTR2015_sample, x = ~rtr_speed_dl, y = ~rtr_speed_ul, z = ~rtr_ping) %>% 
+  add_markers(alpha = 0.2, color = ~op_name)
+```
+
+18 The same plot from before in 2 dimensions.
+
+
+```{r}
+plot_ly(RTR2015_sample, x = ~rtr_speed_dl, y = ~rtr_speed_ul) %>%
+  add_markers(alpha = 0.2, color = ~op_name)
+```
+
+19 Going deeper into distributions of download and upload speed.
+
+```{r}
+x = RTR2015_sample$rtr_speed_dl
+y = RTR2015_sample$rtr_speed_ul
+
+s = subplot(
+  plot_ly(RTR2015_sample, x = x, color = I("green")) %>% add_trace(x = x, name = 'download speed'), 
+  plotly_empty(), 
+  plot_ly(RTR2015_sample, x = x, y = y, color = I("blue")) %>%  add_markers(alpha = 0.2, color = ~op_name), 
+  plot_ly(y = y, color = I("blue")) %>% add_trace(y = y, name = 'upload speed'),
+  nrows = 2, heights = c(0.2, 0.8), widths = c(0.8, 0.2), 
+  shareX = TRUE, shareY = TRUE, titleX = FALSE, titleY = FALSE
+)
+layout(s, showlegend = TRUE)
+```
+
+EX20 Create a dendrogramm of a sample of 2000 for the RTR2015 dataset only for 4G. What ist the difference in the interpretation, so do the operators treat the relation of upload to download speed differently by technology ? It is about the distribution ! 
+
+```{r}
+# RTR2015_4G = RTR2015[ which(RTR2015$nw_cat=='4G'), ]
+# RTR2015_4G_sample = RTR2015_4G[sample(nrow(RTR2015_4G), 2500), ]
+# RTR2015_4G = RTR2015_4G_sample
+
+
+x = RTR2015_sample$rtr_speed_dl
+y = RTR2015_sample$rtr_speed_ul
+
+s = subplot(
+  plot_ly(RTR2015_sample, x = x, color = I("green")) %>% add_trace(x = x, name = 'download speed'), 
+  plotly_empty(), 
+  plot_ly(RTR2015_sample, x = x, y = y, color = I("blue")) %>%  add_markers(alpha = 0.2, color = ~op_name), 
+  plot_ly(y = y, color = I("blue")) %>% add_trace(y = y, name = 'upload speed'),
+  nrows = 2, heights = c(0.2, 0.8), widths = c(0.8, 0.2), 
+  shareX = TRUE, shareY = TRUE, titleX = FALSE, titleY = FALSE
+)
+layout(s, showlegend = TRUE)
+```
+
+21 Moscaicplot using the package ggmosaic.
+
+```{r}
+library(ggmosaic)
+
+p = ggplot(data = RTR2015_sample) + 
+  geom_mosaic(aes(x = product(op_name, device_has_lte), fill = factor(nw_cat)),
+  divider = ddecker(), offset = 0.05) + 
+  labs(x = "operator and LTE", y = "proportion", title = 'Mosaicplot') + 
+  guides(fill = guide_legend(title = "technology", reverse = TRUE))
+ggplotly(p)
+```
+
+
+
+
+
