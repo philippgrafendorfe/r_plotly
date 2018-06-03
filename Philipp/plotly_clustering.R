@@ -1,29 +1,66 @@
-## ------------------------------------------------------------------------
+## ----message=FALSE, warning=FALSE----------------------------------------
 library(ggplot2)
 library(dplyr)
 library(MeanShift)
 library(plotly)
+library(knitr)
+opts_chunk$set(fig.width=9.5, warning=FALSE)
 
 ## ------------------------------------------------------------------------
 address <- url("http://www.trutschnig.net/RTR2015.RData")
 load(address)
-test_df <- RTR2015[sample(nrow(RTR2015), 500), ]
+df <- RTR2015[sample(nrow(RTR2015), 500), ]
 
 ## ------------------------------------------------------------------------
-test_df %>% ggplot(mapping = aes(x = longitude, y = latitude)) + 
-  geom_point()
+plot_ly(df, x = ~longitude, y = ~latitude, size=~rtr_speed_dl)
 
 ## ------------------------------------------------------------------------
-spatial_df_t <- t(test_df[,c("longitude", "latitude", "rtr_speed_dl")])
+spatial_df_t <- t(df[,c("longitude", "latitude", "rtr_speed_dl")])
 
 ## ------------------------------------------------------------------------
-spatial_df_t <- spatial_df_t / apply( spatial_df_t, 1, sd )
+spatial_df_t <- spatial_df_t / apply(spatial_df_t, 1, sd)
 
-h.cand <- quantile( dist( t( spatial_df_t ) ), seq( 0.05, 0.40, by=0.05 ) )
+h.cand <- quantile(dist(t(spatial_df_t)), seq(0.05, 0.40, by=0.05))
 
 ## ------------------------------------------------------------------------
-system.time( bms.clustering <- lapply( h.cand,
-function( h ){ bmsClustering( spatial_df_t, h=h ) } ) )
+system.time(
+  bms.clustering <- lapply(h.cand, 
+                           function(h){
+                             bmsClustering(spatial_df_t, h=h)
+                             }
+                           )
+  )
+
+## ------------------------------------------------------------------------
+resulting_df_s <- as.data.frame(t(spatial_df_t)) %>% select(longitude, latitude, rtr_speed_dl) %>% mutate(cluster = as.factor(bms.clustering[[6]]$labels))
+(resulting_df <- df %>% 
+  select(longitude, latitude, rtr_speed_dl) %>% 
+  mutate(cluster = as.factor(bms.clustering[[6]]$labels), rtr_speed_dl_s = rtr_speed_dl/sd(rtr_speed_dl)))
+
+## ------------------------------------------------------------------------
+g <- list(
+  scope = 'europe',
+  projection = list(type = 'natural earth'),
+  showland = TRUE,
+  countrywidth = 1,
+  subunitwidth = 1
+)
+
+plot_geo(resulting_df, lon = ~longitude, lat = ~latitude) %>% 
+  add_markers(size=~rtr_speed_dl_s
+              , color=~cluster
+              , text=~paste(paste("Download Speed: ", rtr_speed_dl)
+                            , paste("Long: ", longitude)
+                            , paste("Lat: ", latitude)
+                            , sep = "<br />"
+                            )
+              , hoverinfo="text"
+              ) %>% 
+  layout(
+    title = 'Mobile download speed in Austria'
+    , geo = g
+    , mapbox = list(style = "satellite-streets")
+  )
 
 ## ------------------------------------------------------------------------
 plot( spatial_df_t[1,], spatial_df_t[2,], col=bms.clustering[[5]]$labels, 
