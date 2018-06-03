@@ -159,6 +159,13 @@ plot_ly(p, x = ~rtr_speed_dl, y = ~interaction(op_name, device_platform)) %>%
   add_boxplot(color = ~op_name) %>%
   layout(yaxis = list(title = ""), margin = list(l = 100))
 
+d = filter(RTR2015, nw_cat %in% c("4G", "3G", "2G"))
+plot_ly(d, x = ~rtr_speed_dl, y = ~interaction(nw_cat, device_has_lte)) %>%
+  add_boxplot(color = ~nw_cat) %>%
+  layout(yaxis = list(title = ""), margin = list(l = 100))
+
+
+
 Exercise: 
 Use Boxplots to compare the Upload-Speed of devices that have LTE and the ones that don´t 
 
