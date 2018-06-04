@@ -25,7 +25,11 @@ head(RTR2015)
 
 ## Overview
 
-
+- Basics
+- Intermediate
+- Application Time Series
+- Statistics
+- Mean Shift Clustering
 .......
 
 
@@ -38,7 +42,7 @@ https://plotly-book.cpsievert.me/
 https://help.plot.ly/tutorials/
   
   
-## Let´s get started:
+## Let?s get started:
 
 ## Installation: 
 ```
@@ -344,7 +348,7 @@ plot_ly(d, x = ~rtr_speed_dl, y = ~interaction(nw_cat, device_has_lte)) %>%
 
 
 ## Exercise: 
-Use Boxplots to compare the Upload-Speed of devices that have LTE and the ones that don´t 
+Use Boxplots to compare the Upload-Speed of devices that have LTE and the ones that don?t 
 
 ## Heatmaps
 
